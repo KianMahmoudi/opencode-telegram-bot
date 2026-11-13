@@ -12,9 +12,15 @@ cat > /home/node/.config/opencode/opencode.json <<EOF
         "baseURL": "${NINE_ROUTER_URL}",
         "apiKey": "${NINE_ROUTER_API_KEY}"
       },
-      "models": {
-        "${OPENCODE_MODEL_ID}": { "name": "9Router model" }
-      }
+    "models": {
+  "${OPENCODE_MODEL_ID}": {
+    "name": "9Router model",
+    "limit": {
+      "context": 1000000,
+      "output": 64000
+    }
+  }
+}
     }
   }
 }
