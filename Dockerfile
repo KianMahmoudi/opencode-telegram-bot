@@ -32,17 +32,22 @@ FROM node:22-bookworm-slim AS runtime
 
 WORKDIR /app
 
-# Install dumb-init and ca-certificates for proper signal handling and HTTPS
+# dumb-init (signal handling), ca-certificates (HTTPS), wget (startup health check)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     dumb-init \
     ca-certificates \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Install OpenCode CLI so `opencode serve` works inside the container
+RUN npm install -g @opencode/cli
 
 # Set production environment
 ENV NODE_ENV=production
 
 # Set persistent home for the bot
 ENV OPENCODE_TELEGRAM_HOME=/app/data
+ENV HOME=/home/node
 
 # Create data directories with correct ownership for node user
 RUN mkdir -p /app/data/logs /app/data/run && \
@@ -53,6 +58,10 @@ COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/package.json ./package.json
 
+# Copy startup script that launches opencode + bot together
+COPY --chown=node:node start.sh ./start.sh
+RUN chmod +x /app/start.sh
+
 # Run as non-root node user (uid 1000)
 USER node
 
@@ -60,6 +69,6 @@ USER node
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
     CMD ["node", "dist/runtime/healthcheck.js"]
 
-# Single dumb-init entrypoint
+# Single dumb-init entrypoint runs start.sh which starts both processes
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["./start.sh"]
